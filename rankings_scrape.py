@@ -1,13 +1,23 @@
+"""This module contains the functions required to scrape data from the ATP single rankings."""
+
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
-import csv
-import rankings_scrape as rs
 
-def rankings_scraper():
+def rankings_scraper(urlpage='https://www.atptour.com/en/rankings/singles'):
     
-    urlpage='https://www.atptour.com/en/rankings/singles'
+    """
+    Scrapes data from the current top 100 ranked Men's Tennis players according to the ATP rankings site.
+    
+    Returns a Pandas DataFrame.
+    
+    Default website is: https://www.atptour.com/en/rankings/singles.
+    
+    Requires urllib, bs4, numpy and pandas to be installed.  
+    
+    """
+    
     request = Request(urlpage,headers={'User-Agent':'Mozilla/5.0'})
     webpage = urlopen(request).read()
     soup = BeautifulSoup(webpage, 'html.parser')
@@ -66,6 +76,15 @@ def rankings_scraper():
 
 def overview_scraper(sites):
     
+    """
+    Should be run in conjunction with with rankings_scraper,
+    as it assumes that the sites given to it are from the ATP rankings.
+    
+    Outputs all information from the player overview page in a DataFrame
+    Year turned pro, weight, height, brith place, current residence,
+    right vs left hand, type of backhand used, and coach
+    """
+    
     turned_pro = []
     weights = []
     heights = []
@@ -75,9 +94,9 @@ def overview_scraper(sites):
     backhands = []
     coaches = []
 
-    for site in sites:
+    for site in sites: #Might be worthwhile finding a way to scrape multiple sites simultaneously
         
-        #Is it possible to send multiple requests simultaneously? This seems to take a while...
+       
         urlpage= site
         request = Request(urlpage,headers={'User-Agent':'Mozilla/5.0'})
         webpage = urlopen(request).read()
@@ -116,4 +135,3 @@ def overview_scraper(sites):
             })
     
     return(overview_df)
-    
