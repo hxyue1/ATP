@@ -4,6 +4,8 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
+import re
+from datetime import datetime
 
 def rankings_scraper(urlpage='https://www.atptour.com/en/rankings/singles'):
     
@@ -74,7 +76,7 @@ def rankings_scraper(urlpage='https://www.atptour.com/en/rankings/singles'):
     
     return (ATP_df)
 
-def overview_scraper(sites):
+def overview_scraper(sites, display = False):
     
     """
     Should be run in conjunction with with rankings_scraper,
@@ -96,6 +98,8 @@ def overview_scraper(sites):
 
     for site in sites: #Might be worthwhile finding a way to scrape multiple sites simultaneously
         
+        if display == True:
+            print(site)
        
         urlpage= site
         request = Request(urlpage,headers={'User-Agent':'Mozilla/5.0'})
@@ -135,3 +139,92 @@ def overview_scraper(sites):
             })
     
     return(overview_df)
+
+def stats_scraper(url='https://www.atptour.com/en/players/rafael-nadal/n409/overview', turned_pro=2001):
+    current_year = datetime.now().year  
+    url = re.sub('overview','',url)
+    url = url + 'player-stats'
+    
+    request = Request(url,headers={'User-Agent':'Mozilla/5.0'})
+    webpage = urlopen(request).read()
+    soup = BeautifulSoup(webpage, 'html.parser')
+    
+    ###Overall 
+    
+    service, returns = soup.find_all('table', attrs={'class':'mega-table'})
+    
+    #Service
+    service_cells = service.find_all('td')
+    service_temp = []
+    for cell in service_cells:
+        service_temp.append(cell.getText().replace('\r','').replace('\n','').replace('\t',''))
+    data = [str_to_num(string) for string in service_temp[1::2]]
+    service_stats = pd.DataFrame({'Overall':data}, index=service_temp[::2])
+    
+    #Returns
+    returns_cells = returns.find_all('td')
+    returns_temp = []
+    for cell in returns_cells:
+        returns_temp.append(cell.getText().replace('\r','').replace('\n','').replace('\t',''))
+    data = [str_to_num(string) for string in returns_temp[1::2]]
+    returns_stats = pd.DataFrame({'Overall':data}, index=returns_temp[::2])
+    
+    ###Looping through other years
+    
+    for year in range(turned_pro, current_year + 1):
+        url_temp = url + '?year=' + str(year) + '&surfaceType=all'
+        request = Request(url_temp,headers={'User-Agent':'Mozilla/5.0'})
+        webpage = urlopen(request).read()
+        soup = BeautifulSoup(webpage, 'html.parser')
+        
+        try: 
+            service, returns = soup.find_all('table', attrs={'class':'mega-table'})
+        
+            #Service
+            service_cells = service.find_all('td')
+            service_temp = []
+            for cell in service_cells:
+                service_temp.append(cell.getText().replace('\r','').replace('\n','').replace('\t',''))
+            data = [str_to_num(string) for string in service_temp[1::2]]
+            service_stats[str(year)] = data
+            
+            #Returns
+            returns_cells = returns.find_all('td')
+            returns_temp = []
+            for cell in returns_cells:
+                returns_temp.append(cell.getText().replace('\r','').replace('\n','').replace('\t',''))
+            data = [str_to_num(string) for string in returns_temp[1::2]]
+            returns_stats[str(year)] = data
+        
+        except:
+            pass
+    
+    return(service_stats, returns_stats)
+
+def str_to_num(string):
+    """
+    Function to convert numbers encoded as text automatically to integers or floats.
+    1. Removes commas
+    2. Converts percentages to decimals
+    """
+    
+    if ',' in string:
+        string = re.sub(',','',string)
+        num = int(string)
+        
+        return(num)
+        
+    if '%' in string:
+        string = re.sub('%','',string)
+        num = int(string)
+        num = num/100
+        
+        return(num)
+        
+    else:
+        num = int(string)
+        return(num)
+    
+    
+    
+    
