@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import re
 from datetime import datetime
+import time
 
 def rankings_scraper(urlpage='https://www.atptour.com/en/rankings/singles'):
     
@@ -60,6 +61,7 @@ def rankings_scraper(urlpage='https://www.atptour.com/en/rankings/singles'):
     ATP_df = pd.DataFrame.from_records(rows)
     ATP_df.columns = ATP_df.iloc[0]
     ATP_df = ATP_df.iloc[1:]
+    ATP_df.reset_index(drop=True, inplace=True)
     
     #Converting some columns to integer
     ATP_df = ATP_df.astype({
@@ -133,14 +135,23 @@ def overview_scraper(sites, display = False):
             'Height':heights,
             'Birth_place':birth_places,
             'Residences':residences,
-            'Handedness':handedness,
+            'Handedness':hands,
             'Backhand':backhands,
             'Coach':coaches
             })
     
     return(overview_df)
 
-def stats_scraper(url='https://www.atptour.com/en/players/rafael-nadal/n409/overview', turned_pro=2001):
+def stats_scraper_(url='https://www.atptour.com/en/players/rafael-nadal/n409/overview', turned_pro=2001, display=False):
+    
+    """
+    Takes player's overview website url, and iterates over all years since turning pro to scrape their match statistics. 
+    
+    Display prints the name of the players, and what year the scraper is parsing to identify bugs.
+    """
+    
+    if display == True:
+        print('Overall')
     current_year = datetime.now().year  
     url = re.sub('overview','',url)
     url = url + 'player-stats'
@@ -172,6 +183,9 @@ def stats_scraper(url='https://www.atptour.com/en/players/rafael-nadal/n409/over
     ###Looping through other years
     
     for year in range(turned_pro, current_year + 1):
+        if display == True:
+            print(year)
+            
         url_temp = url + '?year=' + str(year) + '&surfaceType=all'
         request = Request(url_temp,headers={'User-Agent':'Mozilla/5.0'})
         webpage = urlopen(request).read()
@@ -201,6 +215,33 @@ def stats_scraper(url='https://www.atptour.com/en/players/rafael-nadal/n409/over
     
     return(service_stats, returns_stats)
 
+def all_player_stats_scraper(df, display=False):
+
+    """
+    Takes a df of multiple players with name, website and year turned pro as columns.
+    Applies stats_scraper_ to each player, and stores results in two dictionaries (service, returns)
+    Returns two dictionaries.
+    """
+    service_stats = {}
+    returns_stats = {}
+    
+    for index, player in df.iterrows():
+        
+        while True:
+            try:
+                if display == True:
+                    print(player['Ranking'], player['Name'])
+                    
+                service_df_temp, returns_df_temp = stats_scraper(player['Website'], player['Turned_pro'], display = display)
+                service_stats[player['Name']] = service_df_temp
+                returns_stats[player['Name']] = returns_df_temp
+            except:
+                time.sleep(5)
+                continue
+            break
+
+    return(service_stats, returns_stats)
+    
 def str_to_num(string):
     """
     Function to convert numbers encoded as text automatically to integers or floats.
